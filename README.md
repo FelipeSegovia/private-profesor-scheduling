@@ -1,78 +1,41 @@
-# React + TypeScript + Vite
+# private-profesor-scheduling
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Panel privado de la educadora. Vite + React 19 + TypeScript. Ver
+[`CLAUDE.md`](./CLAUDE.md) y [`AGENTS.md`](./AGENTS.md) para arquitectura y reglas de producto.
 
-Currently, two official plugins are available:
+## Instalar y correr
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
-
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+pnpm install
+pnpm dev       # http://localhost:5173 (puerto fijo, falla si está ocupado)
 ```
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+Sin configurar nada, `pnpm dev` levanta con **MSW** (datos de prueba en el navegador, sin
+backend). Credenciales de ese modo: cualquier correo y clave no vacíos.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Backend real vs. mocks
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+cp .env.example .env.local
 ```
+
+| Variable | Default | Efecto |
+| --- | --- | --- |
+| `VITE_USE_MSW` | `true` | `'false'` desactiva MSW; todas las peticiones van a `VITE_API_BASE_URL`. |
+| `VITE_API_BASE_URL` | `http://localhost:3000` | Base del backend real (`profesor-scheduling-api`). Vacío = rutas relativas. |
+
+Para usar el backend real: levantarlo aparte
+([`profesor-scheduling-api/README.md`](../profesor-scheduling-api/README.md), puerto `3000` por
+defecto, con CORS habilitado para `http://localhost:5173`), poner `VITE_USE_MSW=false` en
+`.env.local`, y entrar con las credenciales de `SEED_EDUCATOR_EMAIL` /
+`SEED_EDUCATOR_PASSWORD` de ese repo.
+
+## Otros comandos
+
+```bash
+pnpm build     # tsc -b && vite build
+pnpm check     # biome check .
+pnpm preview
+```
+
+No hay test runner. Verificar en el navegador con `pnpm dev`.

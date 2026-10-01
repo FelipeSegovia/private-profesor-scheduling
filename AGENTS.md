@@ -2,7 +2,9 @@
 
 Contexto para agentes que trabajan en la **superficie privada** del MVP: agenda autenticada de la educadora.
 
-Fuente canónica: [docs/mvp/REQUERIMIENTOS_FUNCIONALES.md](docs/mvp/REQUERIMIENTOS_FUNCIONALES.md) y [docs/mvp/FUERA_DEL_MVP.md](docs/mvp/FUERA_DEL_MVP.md). Si hay conflicto, prevalecen esos documentos. El contexto del apoderado está en [AGENTS_PUBLIC.md](AGENTS_PUBLIC.md).
+Fuente canónica de reglas de negocio: [docs/mvp/REQUERIMIENTOS_FUNCIONALES.md](../docs/mvp/REQUERIMIENTOS_FUNCIONALES.md) y [docs/mvp/FUERA_DEL_MVP.md](../docs/mvp/FUERA_DEL_MVP.md). Si hay conflicto, prevalecen esos documentos. El contexto del apoderado está en [AGENTS_PUBLIC.md](../AGENTS_PUBLIC.md).
+
+Fuente canónica del contrato HTTP: [profesor-scheduling-api/docs/](../profesor-scheduling-api/docs/) (`API.md` + `openapi.json`), no los mocks de esta app. El panel de la educadora vive bajo `/api/panel/*`, con JWT propio (`EDUCATOR_JWT_SECRET`, distinto del del apoderado) — ver `.specs/004-panel-educadora/` en ese repo.
 
 ## Specs
 
@@ -24,6 +26,7 @@ Las specs de trabajo están en la carpeta local [`.specs/`](.specs/). Antes de i
 6. Cancelar una sesión en cualquier momento antes de su hora.
 7. Marcar `confirmada` a mano (aviso por WhatsApp) mientras la sesión siga `pendiente`.
 8. Configurar plazo de confirmación (inicial 24 h) y antelación del correo de serie (inicial 48 h). El aviso tiene que salir antes de que venza el plazo; si no, no guardar la configuración.
+9. Recibir avisos en el panel, en tiempo real y en la campana, cuando un apoderado reserva, confirma o cancela, o cuando un cupo se libera por falta de confirmación. No hay aviso por lo que ella misma hace en su agenda. Es un aviso dentro del panel, no un correo. Ver "Avisos en el panel" en `../docs/mvp/REQUERIMIENTOS_FUNCIONALES.md`.
 
 ## Correos a la educadora
 
@@ -32,12 +35,16 @@ Solo si el cambio no lo hizo ella misma en la agenda:
 - El apoderado confirmó, o el sistema dejó la cita confirmada porque el plazo ya había vencido.
 - El apoderado canceló (enlace No puedo o cancelación posterior).
 
-No recibe correo por reserva nueva ni por liberación automática por falta de confirmación: eso se ve en la agenda.
+No recibe correo por reserva nueva ni por liberación automática por falta de confirmación: eso se ve en la agenda y en los avisos del panel (punto 9 de arriba).
 
 ## Estados y cupos
 
 - `no confirmada` (plazo vencido sin confirmar) y `cancelada` liberan el cupo y se conservan como historial.
 - Un cupo está libre si no tiene sesión `pendiente` o `confirmada`.
+
+## Próximamente: ficha por alumno
+
+Vista por cada niño que atiende la educadora, con sus datos y las sesiones que ha tenido. Aún no tiene spec: antes de implementarla, proponer `.specs/001-<nombre>/spec.md` y esperar aprobación. Debe respetar las reglas de fichas de `../docs/mvp/REQUERIMIENTOS_FUNCIONALES.md` y no exponer nada en la superficie pública.
 
 ## Qué no implementar aquí
 
@@ -45,7 +52,7 @@ No agregar en esta superficie ni en el MVP:
 
 - Precio, resumen de ingresos, WebPay, transferencia integrada o boleta.
 - WhatsApp automático (API de Meta u otro proveedor).
-- Cuenta de apoderado o reprogramación hecha por el apoderado.
+- Reprogramación hecha por el apoderado (su cuenta opcional vive solo en la superficie pública).
 - Duración distinta de 1 hora o más de una profesional.
 
 ## Paleta de colores
@@ -70,4 +77,7 @@ Tipografías: `DM Sans` (texto) y `Newsreader` (títulos). Radio base: `0.875rem
 - Shadcn para la reutilización de componentes.
 - tailwindcss - estilos
 - react router - para definir rutas
-- msw - data mock local
+- msw - data mock local, con la forma real del contrato `/api/panel/*`
+- @tanstack/react-query - fetching y cache de datos del servidor
+- zustand - estado de UI (sesión, semana/día seleccionados)
+- sonner - avisos emergentes (toasts) de los avisos en tiempo real; `components/ui/sonner.tsx` sin `next-themes` (tema claro fijo)
