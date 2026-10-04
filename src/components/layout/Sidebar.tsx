@@ -1,4 +1,10 @@
-import { CalendarDays, LayoutDashboard, LogOut, Settings } from "lucide-react";
+import {
+	CalendarDays,
+	LayoutDashboard,
+	LogOut,
+	Settings,
+	Users,
+} from "lucide-react";
 import { NavLink } from "react-router";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -10,6 +16,7 @@ import { useAuthStore } from "@/store/authStore";
 const mainNav = [
 	{ to: "/", label: "Resumen", icon: LayoutDashboard, end: true },
 	{ to: "/agenda", label: "Mi agenda", icon: CalendarDays, end: false },
+	{ to: "/familias", label: "Familias", icon: Users, end: false },
 ] as const;
 
 const configNav = [

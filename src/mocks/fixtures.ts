@@ -1,5 +1,8 @@
 import type {
 	ActivityItem,
+	ChildNotesResponse,
+	ClinicalNoteDto,
+	CreateNoteBody,
 	EducatorProfile,
 	PanelAgendaDay,
 	PanelAgendaResponse,
@@ -12,6 +15,7 @@ import type {
 	SessionStatus,
 	SlotCell,
 	SlotState,
+	UpdateNoteBody,
 	UpdatePreferencesBody,
 	WorkDayInput,
 	WorkDayView,
@@ -542,10 +546,16 @@ export function getGuardianDetailFixture(
 	const guardian = GUARDIANS.find((g) => g.id === id);
 	if (!guardian) return null;
 	const { childrenCount, activeSessions, ...guardianDto } = guardian;
+	const children = (CHILDREN_BY_GUARDIAN[id] ?? []).map((child) => ({
+		...child,
+		notesCount: (NOTES_BY_CHILD[child.id] ?? []).length,
+	}));
 	return {
 		guardian: guardianDto,
-		children: CHILDREN_BY_GUARDIAN[id] ?? [],
-		sessions: [],
+		children,
+		sessions: children
+			.flatMap((child) => sessionsOfChild(child.id))
+			.sort((a, b) => `${b.date}${b.time}`.localeCompare(`${a.date}${a.time}`)),
 	};
 }
 
@@ -559,4 +569,228 @@ export function findChildFixture(
 		if (child) return { child, guardian };
 	}
 	return null;
+}
+
+// ---------------------------------------------------------------------------
+// Ficha clínica (spec `007-ficha-clinica` del backend). Mutable en memoria,
+// igual que `BOOKINGS`: lo que se crea o borra en modo mock se refleja al
+// recargar la lista, y se pierde al recargar la página.
+// ---------------------------------------------------------------------------
+
+/** Sesiones pasadas de algunos niños, para el select "sesión" de un registro. */
+function sessionsOfChild(childId: string): PanelSessionDto[] {
+	const found = findChildFixture(childId);
+	if (!found) return [];
+	const today = todayChileYmd();
+	const make = (
+		daysAgo: number,
+		time: string,
+		status: SessionStatus,
+	): PanelSessionDto => ({
+		id: `${childId}-past-${daysAgo}`,
+		date: addDays(today, -daysAgo),
+		time,
+		childId,
+		guardianId: found.guardian.id,
+		childName: found.child.name,
+		guardianName: found.guardian.name,
+		status,
+	});
+	const sessions: Record<string, PanelSessionDto[]> = {
+		"child-1": [
+			make(21, "19:00", "CONFIRMED"),
+			make(14, "19:00", "CONFIRMED"),
+			make(7, "20:00", "CANCELLED"),
+		],
+		"child-8a": [make(10, "09:00", "CONFIRMED")],
+		"child-8b": [make(9, "10:00", "CONFIRMED")],
+	};
+	return sessions[childId] ?? [];
+}
+
+let noteCounter = 0;
+
+function noteSessionOf(
+	childId: string,
+	sessionId: string | null | undefined,
+): ClinicalNoteDto["session"] {
+	if (!sessionId) return null;
+	const session = sessionsOfChild(childId).find((s) => s.id === sessionId);
+	return session
+		? { date: session.date, time: session.time, status: session.status }
+		: null;
+}
+
+function seedNote(
+	childId: string,
+	daysAgo: number,
+	title: string,
+	body: string,
+	sessionId: string | null,
+	guardianNotified: boolean,
+): ClinicalNoteDto {
+	noteCounter += 1;
+	const stamp = new Date(Date.now() - daysAgo * 86_400_000).toISOString();
+	return {
+		id: `note-${noteCounter}`,
+		childId,
+		date: addDays(todayChileYmd(), -daysAgo),
+		title,
+		body,
+		sessionId,
+		session: noteSessionOf(childId, sessionId),
+		guardianNotified,
+		createdAt: stamp,
+		updatedAt: stamp,
+	};
+}
+
+/** Cada lista va del más reciente al más antiguo, como la API. */
+const NOTES_BY_CHILD: Record<string, ClinicalNoteDto[]> = {
+	"child-1": [
+		seedNote(
+			"child-1",
+			14,
+			"Lectura de sílabas trabadas",
+			"Trabajamos sílabas trabadas con apoyo de tarjetas.\nLogró leer 8 de 10 palabras sin ayuda.",
+			"child-1-past-14",
+			true,
+		),
+		seedNote(
+			"child-1",
+			21,
+			"Primera sesión: evaluación inicial",
+			"Evaluación de lectoescritura y atención.\n\nObservaciones: se distrae con ruidos fuertes; responde bien a instrucciones cortas.",
+			"child-1-past-21",
+			false,
+		),
+	],
+	"child-8a": [
+		seedNote(
+			"child-8a",
+			10,
+			"Comprensión lectora",
+			"Leímos un cuento corto y respondió preguntas literales.",
+			"child-8a-past-10",
+			true,
+		),
+	],
+};
+
+export function listNotesFixture(childId: string): ChildNotesResponse | null {
+	const found = findChildFixture(childId);
+	if (!found) return null;
+	const { childrenCount, activeSessions, ...guardian } = found.guardian;
+	return {
+		child: found.child,
+		guardian,
+		notes: [...(NOTES_BY_CHILD[childId] ?? [])].sort(
+			(a, b) =>
+				b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt),
+		),
+	};
+}
+
+export type NoteFixtureError =
+	| { code: "CHILD_NOT_FOUND" | "NOTE_NOT_FOUND" | "NOTE_SESSION_MISMATCH" }
+	| { code: "VALIDATION_ERROR"; message: string };
+
+/** Mismas reglas y mensajes que `panel-clinical-notes.schemas.ts` del backend. */
+export function validateNoteFields(
+	fields: { date?: string; title?: string; body?: string },
+	required: boolean,
+): string | null {
+	const { date, title, body } = fields;
+	if (required || date !== undefined) {
+		if (typeof date !== "string") return "La fecha es obligatoria.";
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+			return "La fecha debe tener el formato YYYY-MM-DD.";
+		}
+	}
+	if (required || title !== undefined) {
+		const t = (title ?? "").trim();
+		if (t.length < 1) return "El título es obligatorio.";
+		if (t.length > 120) return "El título no puede pasar de 120 caracteres.";
+	}
+	if (required || body !== undefined) {
+		const b = (body ?? "").trim();
+		if (b.length < 1) return "El texto es obligatorio.";
+		if (b.length > 10_000)
+			return "El texto no puede pasar de 10.000 caracteres.";
+	}
+	return null;
+}
+
+export function createNoteFixture(
+	childId: string,
+	body: Partial<CreateNoteBody>,
+): ClinicalNoteDto | NoteFixtureError {
+	if (!findChildFixture(childId)) return { code: "CHILD_NOT_FOUND" };
+	const invalid = validateNoteFields(body, true);
+	if (invalid) return { code: "VALIDATION_ERROR", message: invalid };
+	if (typeof body.notifyGuardian !== "boolean") {
+		return {
+			code: "VALIDATION_ERROR",
+			message: "Indica si el registro se envía al apoderado.",
+		};
+	}
+	if (body.sessionId && !noteSessionOf(childId, body.sessionId)) {
+		return { code: "NOTE_SESSION_MISMATCH" };
+	}
+	noteCounter += 1;
+	const now = new Date().toISOString();
+	const note: ClinicalNoteDto = {
+		id: `note-${noteCounter}`,
+		childId,
+		date: body.date as string,
+		title: (body.title as string).trim(),
+		body: (body.body as string).trim(),
+		sessionId: body.sessionId ?? null,
+		session: noteSessionOf(childId, body.sessionId),
+		guardianNotified: body.notifyGuardian,
+		createdAt: now,
+		updatedAt: now,
+	};
+	NOTES_BY_CHILD[childId] = [note, ...(NOTES_BY_CHILD[childId] ?? [])];
+	return note;
+}
+
+function findNote(id: string): ClinicalNoteDto | null {
+	for (const notes of Object.values(NOTES_BY_CHILD)) {
+		const note = notes.find((n) => n.id === id);
+		if (note) return note;
+	}
+	return null;
+}
+
+export function updateNoteFixture(
+	id: string,
+	body: UpdateNoteBody,
+): ClinicalNoteDto | NoteFixtureError {
+	const note = findNote(id);
+	if (!note) return { code: "NOTE_NOT_FOUND" };
+	const invalid = validateNoteFields(body, false);
+	if (invalid) return { code: "VALIDATION_ERROR", message: invalid };
+	if (body.sessionId && !noteSessionOf(note.childId, body.sessionId)) {
+		return { code: "NOTE_SESSION_MISMATCH" };
+	}
+	if (body.date !== undefined) note.date = body.date;
+	if (body.title !== undefined) note.title = body.title.trim();
+	if (body.body !== undefined) note.body = body.body.trim();
+	if (body.sessionId !== undefined) {
+		note.sessionId = body.sessionId;
+		note.session = noteSessionOf(note.childId, body.sessionId);
+	}
+	note.updatedAt = new Date().toISOString();
+	return note;
+}
+
+export function deleteNoteFixture(id: string): boolean {
+	for (const [childId, notes] of Object.entries(NOTES_BY_CHILD)) {
+		if (notes.some((n) => n.id === id)) {
+			NOTES_BY_CHILD[childId] = notes.filter((n) => n.id !== id);
+			return true;
+		}
+	}
+	return false;
 }

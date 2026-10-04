@@ -3,6 +3,8 @@ import { Navigate, Route, Routes } from "react-router";
 import { AgendaPage } from "@/components/agenda/AgendaPage";
 import { LoginPage } from "@/components/auth/LoginPage";
 import { DashboardPage } from "@/components/dashboard/DashboardPage";
+import { FamiliesPage } from "@/components/families/FamiliesPage";
+import { GuardianPage } from "@/components/families/GuardianPage";
 import { AppShell } from "@/components/layout/AppShell";
 import { PreferencesPage } from "@/components/preferences/PreferencesPage";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -72,6 +74,8 @@ function App() {
 			>
 				<Route index element={<DashboardPage />} />
 				<Route path="agenda" element={<AgendaPage />} />
+				<Route path="familias" element={<FamiliesPage />} />
+				<Route path="familias/:guardianId" element={<GuardianPage />} />
 				<Route path="preferencias" element={<PreferencesPage />} />
 				<Route path="*" element={<Navigate to="/" replace />} />
 			</Route>

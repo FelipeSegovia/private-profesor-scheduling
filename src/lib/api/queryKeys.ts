@@ -5,5 +5,6 @@ export const queryKeys = {
 	preferences: () => ["preferences"] as const,
 	guardians: (query?: string) => ["guardians", query ?? null] as const,
 	guardian: (id: string) => ["guardian", id] as const,
+	childNotes: (childId: string) => ["childNotes", childId] as const,
 	notifications: () => ["notifications"] as const,
 };

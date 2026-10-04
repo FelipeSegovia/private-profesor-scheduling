@@ -177,3 +177,9 @@ export function formatLongDate(iso: string): string {
 	const month = MONTH_NAMES[date.getMonth()];
 	return `${weekday}, ${date.getDate()} de ${month}`;
 }
+
+/** "Lunes, 5 de octubre de 2026". Para historiales, donde el año importa. */
+export function formatLongDateWithYear(iso: string): string {
+	const date = parseLocalDate(iso);
+	return `${formatLongDate(iso)} de ${date.getFullYear()}`;
+}

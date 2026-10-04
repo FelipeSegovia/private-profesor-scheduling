@@ -7,3 +7,24 @@ export const USE_MSW =
 export function apiUrl(path: string): string {
 	return `${API_BASE_URL}${path}`;
 }
+
+/**
+ * Dirección del sitio público de reservas (la que se codifica en el QR de
+ * Preferencias). Devuelve `""` si falta o no es una URL http(s) válida.
+ */
+export const PUBLIC_BOOKING_URL = normalizePublicUrl(
+	import.meta.env.VITE_PUBLIC_BOOKING_URL,
+);
+
+function normalizePublicUrl(raw: string | undefined): string {
+	const value = raw?.trim();
+	if (!value) return "";
+	try {
+		const url = new URL(value);
+		return url.protocol === "http:" || url.protocol === "https:"
+			? url.toString()
+			: "";
+	} catch {
+		return "";
+	}
+}

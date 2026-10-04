@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { WorkDayView } from "@/data/api-types";
 import { usePreferences } from "@/data/queries/usePreferences";
 import { DeadlinesDialog } from "./DeadlinesDialog";
+import { PublicSiteQrCard } from "./PublicSiteQrCard";
 import { WorkDayDialog } from "./WorkDayDialog";
 
 function PreferencesSkeleton() {
@@ -73,7 +74,7 @@ export function PreferencesPage() {
 					Preferencias
 				</h1>
 				<p className="mt-1.5 text-sm text-muted-foreground sm:text-base">
-					Jornada laboral y plazos de confirmación.
+					Jornada laboral, plazos de confirmación y enlace público de reservas.
 				</p>
 			</div>
 
@@ -209,6 +210,8 @@ export function PreferencesPage() {
 					</dl>
 				</CardContent>
 			</Card>
+
+			<PublicSiteQrCard />
 
 			<WorkDayDialog
 				day={editingDay}

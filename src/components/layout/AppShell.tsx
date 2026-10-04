@@ -10,6 +10,7 @@ import { TopBar } from "./TopBar";
 const breadcrumbByPath: Record<string, string> = {
 	"/": "Resumen",
 	"/agenda": "Mi agenda",
+	"/familias": "Familias",
 	"/preferencias": "Preferencias",
 };
 
@@ -18,7 +19,9 @@ export function AppShell() {
 	usePanelEvents();
 	const location = useLocation();
 	const profile = useAuthStore((state) => state.educator);
-	const breadcrumbCurrent = breadcrumbByPath[location.pathname] ?? "Resumen";
+	// `/familias/:id` cuelga de "Familias": se busca por el primer segmento.
+	const section = `/${location.pathname.split("/")[1] ?? ""}`;
+	const breadcrumbCurrent = breadcrumbByPath[section] ?? "Resumen";
 
 	// `RequireAuth` ya garantiza que haya un perfil antes de montar este shell.
 	const educator: Educator = profile

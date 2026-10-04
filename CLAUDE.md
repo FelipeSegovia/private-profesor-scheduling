@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Panel privado de la educadora: ve su agenda, crea citas y, próximamente, tendrá una ficha por cada alumno. Mapa general del proyecto en [`../CLAUDE.md`](../CLAUDE.md).
+Panel privado de la educadora: ve su agenda, crea citas, y desde la sección Familias ve a cada apoderado y la ficha clínica de cada uno de sus niños. Mapa general del proyecto en [`../CLAUDE.md`](../CLAUDE.md).
 
 Reglas de la superficie, paleta y herramientas:
 @AGENTS.md
@@ -35,6 +35,7 @@ cp .env.example .env.local
 | --- | --- | --- |
 | `VITE_USE_MSW` | `true` | `'false'` desactiva MSW; todas las peticiones van a `VITE_API_BASE_URL`. |
 | `VITE_API_BASE_URL` | `http://localhost:3000` | Base del backend real. Vacío = rutas relativas (necesario para que MSW intercepte). |
+| `VITE_PUBLIC_BOOKING_URL` | `http://localhost:5174` | Sitio público de reservas; es la dirección que codifica el QR de `/preferencias`. Vacía o inválida = el panel muestra «falta configurar» en vez del QR. |
 
 Con el backend real levantado (`profesor-scheduling-api`, puerto `3000`), entrar con las
 credenciales de `SEED_EDUCATOR_EMAIL` / `SEED_EDUCATOR_PASSWORD` de ese repo (sembradas por
@@ -65,7 +66,9 @@ Vite + React 19 + TypeScript + Tailwind v4 + shadcn (sobre `@base-ui/react`) + r
 - `src/lib/api/`: `client.ts` (fetch + `Authorization: Bearer`, formato de error `{error, code?}`, desloguea en `401 NO_SESSION`), `panel.ts` (una función por endpoint), `queryKeys.ts`, y el stream de avisos: `sse.ts` (cablea `env` y `authStore`), `sse-loop.ts` (reconexión) y `sse-parser.ts` (formato SSE).
 - `src/store/`: `authStore.ts` (token en `localStorage`, perfil de la educadora), `agendaViewStore.ts` (semana/día seleccionados en la UI).
 - **Avisos en tiempo real** (spec `005-avisos-tiempo-real`; backend: spec 005 de `profesor-scheduling-api`): `usePanelEvents()` se llama **una sola vez**, en `AppShell` (solo existe autenticado), y mantiene abierto `GET /api/panel/events` con `fetch` + `Authorization: Bearer` (no `EventSource`: no admite headers y el token no va en la URL). Cada `SessionEvent` invalida `summary`/`agenda`/`notifications` (y `guardians`/`guardian` si es `CREATED`) y muestra un toast (`sonner`, abajo a la derecha: arriba taparía la campana) salvo si `actor === 'EDUCATOR'` o `kind === 'MOVED'`. El stream no repite lo perdido: al reconectar se vuelve a pedir todo. Reconexión con espera de 1 s a 30 s; `401 NO_SESSION` cierra la sesión sin reintentar. En desarrollo ves 2 peticiones al stream y 1 abortada: es el doble montaje de StrictMode, queda una sola conexión. La campana (`components/layout/NotificationsBell.tsx`, en `TopBar`) marca todo visto al abrirse (`POST /api/panel/notifications/seen`, optimista) y conserva el resaltado de lo no leído mientras está abierta.
-- `src/mocks/`: MSW con la forma real del contrato (`fixtures.ts` genera agenda/resumen/preferencias en base a la fecha real, no una fecha demo fija), para que el modo mock ejercite el mismo código que el backend real. `mocks/notifications.ts` simula la campana y el stream; con MSW activo, `window.__panelMock.emit({ kind, actor?, childName?, startsAt? })` dispara un aviso (toast, insignia y refresco) sin backend. Solo existe con MSW (nunca en un build de producción). Ojo: en modo mock los refrescos no cambian los datos del resumen/agenda, que son fixtures estáticos.
+- `src/mocks/`: MSW con la forma real del contrato (`fixtures.ts` genera agenda/resumen/preferencias en base a la fecha real, no una fecha demo fija; también guarda en memoria los registros de la ficha clínica, que se pierden al recargar, y `handlers.ts` responde un PDF mínimo en `notes.pdf`), para que el modo mock ejercite el mismo código que el backend real. `mocks/notifications.ts` simula la campana y el stream; con MSW activo, `window.__panelMock.emit({ kind, actor?, childName?, startsAt? })` dispara un aviso (toast, insignia y refresco) sin backend. Solo existe con MSW (nunca en un build de producción). Ojo: en modo mock los refrescos no cambian los datos del resumen/agenda, que son fixtures estáticos.
+
+- **Familias y ficha clínica** (spec `006-ficha-clinica`; backend: spec 007 de `profesor-scheduling-api`): rutas `/familias` (lista con buscador, `components/families/FamiliesPage.tsx`) y `/familias/:guardianId` (`GuardianPage.tsx`: datos del apoderado y una pestaña por niño, con `ChildRecord.tsx`). La pestaña activa vive en la URL (`?nino=<childId>`); sin ese parámetro, o con uno ajeno, se muestra el primer niño. Crear y editar usan `NoteDialog.tsx`, que el padre remonta con `key` en cada apertura para que el formulario parta limpio; la casilla "Enviar al apoderado" solo existe al crear (marcada por defecto) y editar nunca reenvía. Crear, editar o borrar invalidan `childNotes(childId)` y `guardian(guardianId)` (por `notesCount`), no la agenda. **PDF:** `useExportNotesPdf` baja el archivo con `getBlob` (`lib/api/client.ts`, comparte `send()` con el resto: mismo `Bearer` y mismo manejo del 401) y lo entrega con un `<a download>` temporal; un enlace directo no manda el header de auth. El nombre sale de `Content-Disposition`, que el navegador solo deja leer entre orígenes si la API lo expone (`src/common/cors.ts` de la API); si no llega, se arma uno equivalente. `ui/select.tsx` es un `<select>` nativo a propósito. Gotcha de Base UI: un `Button` con `render={<Link />}` necesita `nativeButton={false}` o la consola avisa.
 
 `SessionStatus` de presentación tiene 4 valores (`pendiente | confirmada | no confirmada | cancelada`); el backend manda el enum en inglés (`PENDING | CONFIRMED | NOT_CONFIRMED | CANCELLED`) y los adaptadores traducen. Los tipos de `src/data/` no se comparten con `public-parents-scheduling-web/src/domain/`. Al agregar estados o entidades, revisar la definición de `docs/mvp/` y la app pública para mantenerlos alineados.
 
@@ -76,7 +79,7 @@ El panel tiene login, lee resumen, agenda y preferencias del backend real (o de 
 los expone bajo `/api/panel/*` (ver `AGENTS.md` para las reglas de cada uno):
 
 - Crear cita única o serie, mover, cancelar, marcar confirmada, bloquear cupos.
-- Fichas de apoderado y niño, y la **ficha por alumno** (próxima feature, además sin spec en el backend).
+- Editar fichas de apoderado y niño (nombre, teléfono, edad) y crear familias desde Familias: la sección hoy es de lectura salvo la ficha clínica.
 
 Cualquiera de estas es una feature de varias capas: requiere spec en `.specs/` (ver
 `001-conectar-panel` para el patrón). Plantillas en `.specs/_templates/`.

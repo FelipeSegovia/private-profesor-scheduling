@@ -1,4 +1,7 @@
 import type {
+	ChildNotesResponse,
+	ClinicalNoteDto,
+	CreateNoteBody,
 	CreateSessionBody,
 	EducatorProfile,
 	PanelAgendaResponse,
@@ -9,11 +12,12 @@ import type {
 	PanelPreferencesResponse,
 	PanelSessionDto,
 	PanelSummaryResponse,
+	UpdateNoteBody,
 	UpdatePreferencesBody,
 	UpdateTemplateBody,
 	UpdateTemplateResult,
 } from "@/data/api-types";
-import { get, post, put } from "@/lib/api/client";
+import { del, get, getBlob, patch, post, put } from "@/lib/api/client";
 
 export function panelLogin(
 	email: string,
@@ -81,4 +85,34 @@ export function fetchNotifications(): Promise<PanelNotificationsResponse> {
 
 export function markNotificationsSeen(): Promise<void> {
 	return post("/api/panel/notifications/seen");
+}
+
+/** Registros de la ficha clínica de un niño, con el niño y su apoderado. */
+export function listChildNotes(childId: string): Promise<ChildNotesResponse> {
+	return get(`/api/panel/children/${childId}/notes`);
+}
+
+export function createChildNote(
+	childId: string,
+	body: CreateNoteBody,
+): Promise<ClinicalNoteDto> {
+	return post(`/api/panel/children/${childId}/notes`, body);
+}
+
+export function updateNote(
+	id: string,
+	body: UpdateNoteBody,
+): Promise<ClinicalNoteDto> {
+	return patch(`/api/panel/notes/${id}`, body);
+}
+
+export function deleteNote(id: string): Promise<void> {
+	return del(`/api/panel/notes/${id}`);
+}
+
+/** PDF con el historial completo (más antiguo primero). */
+export function fetchChildNotesPdf(
+	childId: string,
+): Promise<{ blob: Blob; filename: string | null }> {
+	return getBlob(`/api/panel/children/${childId}/notes.pdf`);
 }

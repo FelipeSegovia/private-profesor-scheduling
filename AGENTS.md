@@ -42,9 +42,9 @@ No recibe correo por reserva nueva ni por liberación automática por falta de c
 - `no confirmada` (plazo vencido sin confirmar) y `cancelada` liberan el cupo y se conservan como historial.
 - Un cupo está libre si no tiene sesión `pendiente` o `confirmada`.
 
-## Próximamente: ficha por alumno
+## Familias y ficha clínica por niño
 
-Vista por cada niño que atiende la educadora, con sus datos y las sesiones que ha tenido. Aún no tiene spec: antes de implementarla, proponer `.specs/001-<nombre>/spec.md` y esperar aprobación. Debe respetar las reglas de fichas de `../docs/mvp/REQUERIMIENTOS_FUNCIONALES.md` y no exponer nada en la superficie pública.
+Sección Familias del panel: datos del apoderado y, dentro, la ficha clínica de cada niño (registros que ella escribe, con correo opcional al apoderado y exportación a PDF). Implementada en `.specs/006-ficha-clinica/` (backend: spec `007-ficha-clinica` de la API). Reglas en «Ficha clínica» de `../docs/mvp/REQUERIMIENTOS_FUNCIONALES.md`; no exponer nada en la superficie pública. Desde aquí aún no se editan los datos del apoderado ni del niño.
 
 ## Qué no implementar aquí
 

@@ -175,6 +175,8 @@ export interface PanelChildDto {
 	guardianId: string;
 	name: string;
 	age: number;
+	/** Registros de su ficha clínica. Solo viene en `GET /guardians/:id`. */
+	notesCount?: number;
 }
 
 export interface PanelGuardianDto {
@@ -217,4 +219,55 @@ export interface UpdatePreferencesBody {
 	confirmationDeadlineHours: number;
 	seriesNoticeHours: number;
 	bookingHorizonWeeks: number;
+}
+
+/**
+ * Ficha clínica (`profesor-scheduling-api`, spec `007-ficha-clinica`). Ver la
+ * sección "Ficha clínica" de su `docs/API.md`.
+ */
+export interface ClinicalNoteSessionDto {
+	/** `YYYY-MM-DD`, Chile. */
+	date: string;
+	/** `HH:mm`, Chile. */
+	time: string;
+	status: SessionStatus;
+}
+
+export interface ClinicalNoteDto {
+	id: string;
+	childId: string;
+	/** Día del registro, `YYYY-MM-DD` (fecha de calendario, no un instante). */
+	date: string;
+	title: string;
+	body: string;
+	sessionId: string | null;
+	session: ClinicalNoteSessionDto | null;
+	/** Se pidió enviar el registro al apoderado al crearlo. */
+	guardianNotified: boolean;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface ChildNotesResponse {
+	child: PanelChildDto;
+	guardian: PanelGuardianDto;
+	/** Del más reciente al más antiguo. */
+	notes: ClinicalNoteDto[];
+}
+
+export interface CreateNoteBody {
+	date: string;
+	title: string;
+	body: string;
+	sessionId?: string;
+	/** Obligatorio: el panel siempre lo manda de forma explícita. */
+	notifyGuardian: boolean;
+}
+
+/** `sessionId: null` desvincula la sesión. Editar nunca manda correo. */
+export interface UpdateNoteBody {
+	date?: string;
+	title?: string;
+	body?: string;
+	sessionId?: string | null;
 }
