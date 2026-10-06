@@ -6,6 +6,7 @@ import {
 	Users,
 } from "lucide-react";
 import { NavLink } from "react-router";
+import logoIcon from "@/assets/icon_acompana.svg";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import type { Educator } from "@/data/dashboard";
@@ -33,9 +34,7 @@ export function Sidebar({ educator }: SidebarProps) {
 	return (
 		<aside className="flex w-full flex-col gap-6 border-b border-border bg-sidebar px-4 py-5 lg:w-64 lg:shrink-0 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
 			<div className="flex items-center gap-2.5 px-1">
-				<span className="relative flex size-8 items-center justify-center rounded-full bg-primary">
-					<span className="size-2 rounded-full bg-primary-foreground" />
-				</span>
+				<img src={logoIcon} alt="" className="size-8" />
 				<span className="font-serif text-xl font-medium tracking-tight text-foreground">
 					Acompaña
 				</span>
